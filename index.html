@@ -46,5 +46,58 @@ const $=id=>document.getElementById(id);
 function setLang(){let x=tr[lang];$("heroTitle").textContent=x.title;$("heroSub").textContent=x.sub;$("navqtxt").textContent=x.q;$("navctxt").textContent=x.c;$("stat").textContent=x.stat;$("jurLabel").textContent=x.jur;$("foot").textContent=x.foot;$("app").classList.toggle("rtl",lang==="العربية"||lang==="کوردی سۆرانی");document.documentElement.lang=lang==="Türkçe"?"tr":lang==="English"?"en":lang==="العربية"?"ar":"ku";$("jur").options[0].text=x.all;$("jur").options[1].text=x.iraq;$("jur").options[2].text=x.kur;$("jur").options[3].text=x.tur;setMode(mode)}
 function setMode(m){mode=m;let x=tr[lang];$("navq").classList.toggle("active",m==="q");$("navc").classList.toggle("active",m==="c");$("questionBox").classList.toggle("hidden",m!=="q");$("caseBox").classList.toggle("hidden",m!=="c");$("eyebrow").textContent=m==="q"?"RESEARCH MODE / 01":"CASE MODE / 02";$("heading").textContent=m==="q"?x.qh:x.ch;$("desc").textContent=m==="q"?x.qd:x.cd;$("inputLabel").textContent=x.input;$("caseLabel").textContent=x.case;$("submitQ").textContent=x.ask;$("submitC").textContent=x.eval;$("query").placeholder=lang==="Türkçe"?"Örn. Irak Anayasası'na göre resmî din nedir?":lang==="English"?"e.g. What is Iraq's official religion?":lang==="العربية"?"مثال: ما هو الدين الرسمي للعراق؟":"نموونە: ئایینی فەرمی عێراق چییە؟"}
 function search(text,isCase){let x=tr[lang],j=$("jur").value,terms=text.toLocaleLowerCase().split(/[^a-zA-ZğüşöçıİĞÜŞÖÇء-يەڕڵێۆ]+/).filter(t=>t.length>2);let found=records.filter(r=>(j==="all"||r.j===j)&& (terms.some(t=>(r.law+" "+r.a+" "+r.t+" "+r.body+" "+r.k.join(" ")).toLocaleLowerCase().includes(t))));found=found.slice(0,8);let out=`<div class="result"><h3>${isCase?x.ch:x.hits}</h3>`;if(isCase)out+=`<div class="notice">${x.casewarn}</div>`;if(!found.length)out+=`<p>${x.none}</p>`;else{out+="<ol>"+found.map(r=>`<li><b>${r.law} · ${r.a} — ${r.t}</b><br>${r.body}<br><a class="source" target="_blank" rel="noopener" href="${r.url}">${x.src} ↗</a></li>`).join("")+"</ol>"}out+=`<div class="notice">${x.warn}<br>${x.notice}</div></div>`;$("output").innerHTML=out}
-$("lang").addEventListener("change",e=>{lang=e.target.value;setLang()});$("navq").onclick=()=>setMode("q");$("navc").onclick=()=>setMode("c");$("submitQ").onclick=()=>{let v=$("query").value.trim();if(v)search(v,false)};$("submitC").onclick=()=>{let v=$("event").value.trim();if(v)search(v,true)};setLang();
+
+async function askNOVA(question, isCase) {
+  const out = $("output");
+  search(question, isCase);
+  const loading = document.createElement("div");
+  loading.className = "result";
+  loading.textContent = "NOVA Legal is preparing your answer...";
+  out.appendChild(loading);
+
+  try {
+    const response = await fetch(
+      "https://nova-lhegal-api.ardahur907.workers.dev/",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question,
+          language: lang,
+          jurisdiction: $("jur").value
+        })
+      }
+    );
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "API error");
+
+    loading.textContent = "";
+    const title = document.createElement("h3");
+    title.textContent = "NOVA Legal AI";
+    const answer = document.createElement("p");
+    answer.style.whiteSpace = "pre-wrap";
+    answer.textContent = data.answer || "No answer received.";
+    loading.append(title, answer);
+  } catch (error) {
+    loading.textContent = "Connection error: " + error.message;
+  }
+}
+
+$("lang").addEventListener("change", e => {
+  lang = e.target.value;
+  setLang();
+});
+$("navq").onclick = () => setMode("q");
+$("navc").onclick = () => setMode("c");
+$("submitQ").onclick = () => {
+  const v = $("query").value.trim();
+  if (v) askNOVA(v, false);
+};
+$("submitC").onclick = () => {
+  const v = $("event").value.trim();
+  if (v) askNOVA(v, true);
+};
+setLang();
+
 </script></body></html>
