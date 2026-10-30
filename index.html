@@ -70,7 +70,7 @@ async function askNOVA(question, isCase) {
     );
 
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "API error");
+  if (!response.ok) throw new Error(JSON.stringify(data.details || data.error || "API error"));
 
     loading.textContent = "";
     const title = document.createElement("h3");
